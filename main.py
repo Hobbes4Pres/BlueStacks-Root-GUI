@@ -116,10 +116,11 @@ class BluestacksRootToggle(QWidget):
 
         self.instance_group = QGroupBox("Instances")
         self.instance_layout = QGridLayout()
-        self.instance_layout.setColumnStretch(0, 4)
-        self.instance_layout.setColumnStretch(1, 1)
+        self.instance_layout.setColumnStretch(0, 3)
+        self.instance_layout.setColumnStretch(1, 4)
         self.instance_layout.setColumnStretch(2, 1)
-        self.instance_layout.setHorizontalSpacing(15)
+        self.instance_layout.setColumnStretch(3, 1)
+        self.instance_layout.setHorizontalSpacing(10)
         self.instance_group.setLayout(self.instance_layout)
         main_layout.addWidget(self.instance_group)
 
@@ -251,6 +252,7 @@ class BluestacksRootToggle(QWidget):
             patch_mode = inst.get("patch_mode", False)  # 5.22.150.1014+ uses the patches
             root_info = config_handler.get_complete_root_statuses(config_path)
             instance_root_statuses = root_info['instance_statuses']
+            display_names = root_info.get('display_names', {})
 
             disk_instances = {entry for entry in (os.listdir(data_path) if os.path.isdir(data_path) else []) if os.path.isdir(os.path.join(data_path, entry))}
             all_instance_names = set(instance_root_statuses.keys()) | disk_instances
@@ -266,6 +268,8 @@ class BluestacksRootToggle(QWidget):
                     elif is_readonly is False: rw_mode = constants.MODE_READWRITE
 
                 individual_root_on = instance_root_statuses.get(name, False)
+                display_name = display_names.get(name, name)
+
                 if patch_mode:
                     # 5.22.150.1014+: app root = the guest su binary actually patched
                     # (tracked by the Data.vhdx sidecar). enable_root_access only makes
@@ -290,6 +294,7 @@ class BluestacksRootToggle(QWidget):
                     "rw_mode": rw_mode,
                     "root_enabled": effective_root_status,
                     "individual_root_status": individual_root_on,
+                    "display_name": display_name,
                     "patch_mode": patch_mode,
                 }
 
@@ -318,11 +323,17 @@ class BluestacksRootToggle(QWidget):
             checkbox.setChecked(unique_id in previous_selection)
 
             root_text = "On" if data["root_enabled"] else "Off"
+            Qlabel_root = QLabel(f"Root: {root_text}")
+            if root_text == "On":
+                Qlabel_root.setStyleSheet("""QLabel { background-color: green; color: white; padding: 2px;}""")
+            else:
+                Qlabel_root.setStyleSheet("""QLabel { padding: 2px;}""")
             rw_text = "On" if data["rw_mode"] == constants.MODE_READWRITE else "Off"
 
             self.instance_layout.addWidget(checkbox, row, 0)
-            self.instance_layout.addWidget(QLabel(f"Root: {root_text}"), row, 1)
-            self.instance_layout.addWidget(QLabel(f"R/W: {rw_text}"), row, 2)
+            self.instance_layout.addWidget(QLabel(data["display_name"]), row, 1)
+            self.instance_layout.addWidget(Qlabel_root, row, 2)
+            self.instance_layout.addWidget(QLabel(f"R/W: {rw_text}"), row, 3)
             self.instance_checkboxes[unique_id] = {"checkbox": checkbox}
 
     def _toggle_single_instance_root(self, unique_id, progress=None):
